@@ -119,18 +119,26 @@
   (let [ps (if (string? path) (split-path-kws path) path)
         fps (first ps)
         rps (next ps)]
+    (println "PATH --")
+    (println ps)
+    (println fps)
+    (println rps)
     (if (string? fps)
       (if rps
         (update-in dp [fps] #(dispatch-assoc (or % {:type :path-segment}) rps method handler))
         (if (and (dp fps) ((dp fps) method))
-          (throw (RuntimeException. (str "Refusing to overwrite path " path)))
+          (throw (RuntimeException. (str "Refusing to overwrite path 1 " path)))
           (update-in dp [fps] #(dispatch-assoc (or % {:type :method})       nil method handler))))
       ;; assuming it's a keyword
       (if rps
         (update-in dp [:variables] #(sort-by (fn [a] (a 2)) (conj (vec (remove (fn [co] (when (same-path? (co 3) rps) (throw (RuntimeException. (str "Refusing to overwrite path for " path))))) %1)) %2)) [fps (dispatch-assoc {:type :path-segment} rps method handler) (count (drop-while string? rps)) rps])
         (if (empty? (:variables dp))
           (assoc dp :variables [[fps (dispatch-assoc {:type :method}       nil method handler)]])
-          (throw (RuntimeException. (str "Refusing to overwrite path " path))))))))
+          (if-let [b (first (filter #(= fps (first %)) (:variables dp)))]
+            (assoc dp :variables (vec (map #(if (= fps (first %))
+                                              [fps (dispatch-assoc (second b) nil method handler)]
+                                              %) (:variables dp))))
+            (throw (RuntimeException. (str "Refusing to overwrite path 2 " path)))))))))
 
 (defmethod dispatch-assoc :method
   [dp path method handler]
@@ -183,6 +191,7 @@
   (to-text [v] v)
   (to-json [v] (json/json-str {:string v}))
   (to-clj  [v] (str \" v \"))
+  (to-html [v] v)
   clojure.lang.IPersistentMap
   (to-clj  [v] (str v))
   (to-json [v] (json/json-str (json-safe v))))
@@ -232,3 +241,6 @@
   (fn [req]
     (let [resp (hdlr req)]
       (web-output (get-in req [:headers "accept"] "*/*") resp))))
+
+(defprotocol ToRingResponse
+  (to-ring-response [t]))
