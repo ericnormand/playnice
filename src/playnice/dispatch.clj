@@ -119,10 +119,6 @@
   (let [ps (if (string? path) (split-path-kws path) path)
         fps (first ps)
         rps (next ps)]
-    (println "PATH --")
-    (println ps)
-    (println fps)
-    (println rps)
     (if (string? fps)
       (if rps
         (update-in dp [fps] #(dispatch-assoc (or % {:type :path-segment}) rps method handler))
@@ -244,3 +240,24 @@
 
 (defprotocol ToRingResponse
   (to-ring-response [t]))
+
+(defn wrap-fake-methods [h]
+  (fn [req]
+    (if (:__method (:params req))
+      (h (assoc req :request-method (keyword (string/lower-case (:__method (:params req))))))
+      (h req))))
+
+(def unsafe-methods #{:post :delete :put :patch})
+
+(defn wrap-redirect [h]
+  (fn [req]
+    (let [resp (h req)
+          red (or (get-in req  [:params :redirect])
+                  (get-in resp [:headers "location"]))]
+      (if (and red
+               (contains? unsafe-methods (:request-method req))
+               (re-matches #".*html.*" (get-in resp [:headers "content-type"] "")))
+        (assoc resp
+          :headers (assoc (:headers resp) "location" red)
+          :status 303)
+        resp))))
