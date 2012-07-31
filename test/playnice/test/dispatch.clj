@@ -35,37 +35,40 @@
                                  "hello" okhandler}
                                 {:uri "/Hello"}))))
   (is (= 200 (:status (dispatch {:type :path-segment
-                                 :variables [[:greeting okhandler]]}
+                                 :variables [{:var :greeting :dsp okhandler}]}
                                 {:uri "/hey"}))))
   (is (= 200 (:status (dispatch {:type :path-segment
-                                 :variables [[:fail {:type :404}]
-                                             [:ok {:type :handler
-                                                   :handler
-                                                   #(if (= "hey" (:ok %))
-                                                      {:status 200
-                                                       :headers {}}
-                                                      {:status 500
-                                                       :headers {}})}]]}
+                                 :variables [{:var :fail :dsp {:type :404}}
+                                             {:var :ok :dsp {:type :handler
+                                                             :handler
+                                                             #(if (= "hey" (:ok %))
+                                                                {:status 200
+                                                                 :headers {}}
+                                                                {:status 500
+                                                                 :headers {}})}}]}
                                 {:uri "/hey"}))))
   (is (= 200 (:status (dispatch {:type :path-segment
                                  "hey" {:type :404}
-                                 :variables [[:fail {:type :404}]
-                                             [:ok {:type :handler
-                                                   :handler
-                                                   #(if (= "hey" (:ok %))
-                                                      {:status 200
-                                                       :headers {}}
-                                                      {:status 500
-                                                       :headers {}})}]]}
+                                 :variables [{:var :fail :dsp {:type :404}}
+                                             {:var :ok :dsp {:type :handler
+                                                             :handler
+                                                             #(if (= "hey" (:ok %))
+                                                                {:status 200
+                                                                 :headers {}}
+                                                                {:status 500
+                                                                 :headers {}})}}]}
                                 {:uri "/hey"}))))
   (is (= 404 (:status (dispatch {:type :path-segment
-                                  :variables [[:fail {:type :handler
-                                                      :handler (constantly {:status 404})} 2]
-                                              [:ok okhandler 7]]}
+                                 :variables [{:var :fail
+                                              :dsp {:type :handler
+                                                    :handler (constantly {:status 404})}
+                                              :cnt 2}
+                                             {:var :ok :dsp okhandler :cnt 7}]}
                                 {:uri "/hey"}))))
   (is (= 200 (:status (dispatch {:type :path-segment
-                                 :variables [[:greeting {:type :path-segment
-                                                         "you" okhandler}]]}
+                                 :variables [{:var :greeting
+                                              :dsp {:type :path-segment
+                                                    "you" okhandler}}]}
                                 {:uri "/hey/you"})))))
 
 (deftest method-dispatch
@@ -96,18 +99,20 @@
      (is false))))
 
 (deftest test-cases
-  (let [c1 {3 {"hello" {:variables [[:there {"a" {:get {:type :handler,
-                                                        :handler (fn [req] {:status 200
-                                                                           :headers {}
-                                                                           :there (:there req)})},
-                                                  :type :method},
-                                             :type :path-segment}]
-                                    [:abcd {"b" {:get {:type :handler,
-                                                       :handler (fn [req] {:status 200
-                                                                          :headers {}
-                                                                          :abcd (:abcd req)})},
-                                                 :type :method},
-                                            :type :path-segment}]],
+  (let [c1 {3 {"hello" {:variables [{:var :there
+                                     :dsp {"a" {:get {:type :handler,
+                                                      :handler (fn [req] {:status 200
+                                                                         :headers {}
+                                                                         :there (:there req)})},
+                                                :type :method},
+                                           :type :path-segment}}
+                                    {:var :abcd
+                                     :dsp {"b" {:get {:type :handler,
+                                                      :handler (fn [req] {:status 200
+                                                                         :headers {}
+                                                                         :abcd (:abcd req)})},
+                                                :type :method},
+                                           :type :path-segment}}],
                         :type :path-segment},
                :type :path-segment},
             :type :path-length}]
@@ -230,36 +235,3 @@
           (dispatch-assoc "/hello" :get (fn [req] {:status 200 :headers {}}))
           (dispatch-assoc "/hello" :post (fn [req] {:status 200 :headers {}}))))
   )
-
-(deftest test-trace-middleware
-  (let [hdrs {"Hello" "Hello"
-              "Goodbye" "Goodbye"}]
-    (is (= 200 (:status ((trace-middleware #(dispatch okhandler %))
-                         {:request-method :trace
-                          :headers hdrs}))))
-    (is (= 200 (:status ((trace-middleware #(dispatch okhandler %))
-                         {:request-method :options
-                          :headers hdrs
-                          :uri "/fdsfs"}))))
-    (is (= 404 (:status ((trace-middleware #(dispatch {:type :404} %))
-                         {:request-method :get
-                          :uri "/fdsfs"}))))
-    (is (= 200 (:status ((trace-middleware #(dispatch {:type :404} %))
-                         {:request-method :trace
-                          :uri "/fdsfs"}))))))
-
-(deftest test-parse-accept
-  (is (= [{:q 1.0 :a "*" :b "*"}] (parse-accept "*/*")))
-  (is (= [{:q 0.5 :a "*" :b "*"}] (parse-accept "*/*;q=.5")))
-  (is (= [{:q 0.5 :a "text" :b "html"}] (parse-accept "text/html;q=.5")))
-  (is (= [{:q 0.5 :a "text" :b "html" :level 1.0}] (parse-accept "text/html;q=.5;level=1")))
-  (is (= [{:q 1.0 :a "text" :b "html"} {:q 0.5 :a "*" :b "*"}] (parse-accept "text/html, */*;q=.5")))
-  (is (= [{:q 1.0 :a "text" :b "html"} {:q 0.5 :a "*" :b "*"}] (parse-accept "*/*;q=.5,text/html  ")))
-  (is (= [{:q 1.0 :a "text" :b "html"} {:q 1.0 :a "text" :b "json"} {:q 1.0 :a "text" :b "a"} {:q 0.5 :a "*" :b "*"}] (parse-accept "*/*;q=.5,text/html,text/json,text/a  ")))
-  (is (= [{:q 1.0 :a "text" :b "a" :level 9.0} {:q 1.0 :a "text" :b "html"} {:q 1.0 :a "text" :b "json"}  {:q 0.5 :a "*" :b "*"}] (parse-accept "*/*;q=.5,text/html,text/json,text/a;level=9  ")))
-  (is (= [{:q 1.0 :a "text" :b "html" :plus "xml"}] (parse-accept "text/html+xml")))
-  )
-
-(deftest web-output-test
-  (is (= 406 (:status (web-output "*/*" {:headers {} :status 200 :body (java.net.URL. "http://www.google.com/")}))))
-  (is (= 200 (:status (web-output "*/*" {:headers {} :status 200 :body "hello"})))))
