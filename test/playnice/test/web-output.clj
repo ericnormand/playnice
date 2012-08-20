@@ -1,6 +1,6 @@
 (ns playnice.test.trace
   (:use clojure.test)
-  (:use playnice.middleware.web-output))
+  (:use playnice.middleware.weboutput))
 
 (deftest test-parse-accept
   (is (= [{:q 1.0 :a "*" :b "*"}] (parse-accept "*/*")))

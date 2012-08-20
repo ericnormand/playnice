@@ -1,6 +1,9 @@
 (ns playnice.test.trace
   (:use clojure.test)
-  (:use playnice.middleware.trace))
+  (:use playnice.middleware.trace)
+  (:use playnice.dispatch))
+
+(def okhandler (fn [req] {:status 200 :headers {}}))
 
 (deftest test-trace-middleware
   (let [hdrs {"Hello" "Hello"
@@ -12,9 +15,9 @@
                          {:request-method :options
                           :headers hdrs
                           :uri "/fdsfs"}))))
-    (is (= 404 (:status ((wrap-trace #(dispatch {:type :404} %))
+    (is (= 404 (:status ((wrap-trace #(dispatch nil %))
                          {:request-method :get
                           :uri "/fdsfs"}))))
-    (is (= 200 (:status ((wrap-trace #(dispatch {:type :404} %))
+    (is (= 200 (:status ((wrap-trace #(dispatch nil %))
                          {:request-method :trace
                           :uri "/fdsfs"}))))))
