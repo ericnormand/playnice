@@ -13,7 +13,21 @@ A library to help you serve HTTP standard responses and be lenient with HTTP req
 
 Add this to your dependencies:
 
-  [playnice "0.0.4"]
+    [playnice "0.0.4"]
+
+Then you can define a simple server like this.
+
+    (ns my.namespace
+      (:require [playnice.dispatch  :as dis])
+      (:require [ring.adapter.jetty :as jetty]))
+    
+    (def routes (-> nil
+                  (dis/dassoc "/" :get (constantly "Home page!"))
+                  (dis/dassoc "/:greeting/:greetee" :get #(str (:greeting %) ", " (:greetee %) "!"))))
+    
+    (defn app [req] (dis/dispatch routes req))
+    
+    (jetty/run-jetty app 8080)
 
 ## Use it!
 
