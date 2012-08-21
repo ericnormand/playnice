@@ -15,7 +15,11 @@ Add this to your dependencies:
 
   [playnice "0.0.4"]
 
+## Use it!
 
+Please use it and send your patches. I'd love to hear your feedback.
+Just create an issue in github.
+https://github.com/ericnormand/playnice
 
 ## License
 
