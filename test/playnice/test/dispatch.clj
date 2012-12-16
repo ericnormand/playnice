@@ -12,7 +12,7 @@
 
 (defn pld [& rest]
   (if (empty? rest)
-    (playnice.dispatch.protocol.PathLengthDispatch.)
+    (playnice.dispatch.protocol/pathlength)
     (apply assoc (pld) rest)))
 
 (deftest path-length-dispatch
@@ -26,7 +26,7 @@
 (deftest nil-dispatch
   (is (= 404 (:status (dispatch nil {:uri "/anything"})))))
 
-(defn pvd [v s c p] (playnice.dispatch.protocol.PathVariableDispatch. v s c p))
+(defn pvd [v s c p] (playnice.dispatch.protocol/pathvariable v s c p))
 
 (deftest path-variable-dispatch
   (is (= 200 (:status (dispatch (pvd :greeting okhandler 0 nil) {:uri "/hello"}))))
@@ -34,14 +34,11 @@
 
 (defn psd [& rest]
   (if (empty? rest)
-    (playnice.dispatch.protocol.PathSegmentDispatch. nil)
+    (playnice.dispatch.protocol/pathsegment nil)
     (apply assoc (psd) rest)))
 
-(defn pvd [var sub cnt path]
-  (playnice.dispatch.protocol.PathVariableDispatch. var sub cnt path))
-
 (defn pvld [vars]
-  (playnice.dispatch.protocol.PathVariableListDispatch. vars))
+  (playnice.dispatch.protocol/pathvariablelist vars))
 
 (deftest path-segment-dispatch
   (is (= 404 (:status (dispatch (psd) {:uri "/dude/farout"}))))
@@ -77,42 +74,16 @@
                                 {:uri "/hey/you"})))))
 
 
-(defn md [& rest]
-  (if (not-empty rest)
-    (apply assoc (playnice.dispatch.protocol.MethodDispatch.) rest)
-    (playnice.dispatch.protocol.MethodDispatch.)))
-
-(deftest method-dispatch
-  (is (= 405 (:status (dispatch (md) {:request-method :get :uri "/"}))))
-  (is (= 200 (:status (dispatch (md) {:request-method :options :uri "/"}))))
-  (is (= 200 (:status (dispatch (md :get okhandler) {:request-method :get :uri "/"}))))
-  (let [resp (dispatch (md :get okhandler) {:request-method :options :uri "/"})
-        allow ((:headers resp) "Allow")]
-    (cond
-     (string? allow)
-     (do
-       (is (<= 0 (.indexOf allow "GET")))
-       (is (<= 0 (.indexOf allow "OPTIONS")))
-       (is (= -1 (.indexOf allow "PUT"))))
-     (seq? allow)
-     (is (some #(and
-                 (is (<= 0 (.indexOf % "GET")))
-                 (is (<= 0 (.indexOf % "OPTIONS")))
-                 (is (= -1 (.indexOf % "PUT"))))
-               allow))
-     :otherwise
-     (is false))))
-
 (deftest test-cases
   (let [c1 (pld 3 (psd "hello"
                        (pvld
-                        [(pvd :there (psd "a" (md :get #(hash-map :status 200
-                                                                  :headers {}
-                                                                  :there (:there %))))
+                        [(pvd :there (psd "a" #(hash-map :status 200
+                                                         :headers {}
+                                                         :there (:there %)))
                               1 [])
-                         (pvd :abcd (psd "b" (md :get #(hash-map :status 200
-                                                                 :headers {}
-                                                                 :abcd (:abcd %))))
+                         (pvd :abcd (psd "b" #(hash-map :status 200
+                                                        :headers {}
+                                                        :abcd (:abcd %)))
                               1 [])])))]
     (is (= 404 (:status (dispatch c1 {:uri "/"                 :request-method :get}))))
     (is (= 404 (:status (dispatch c1 {:uri "/hello"            :request-method :get}))))
@@ -121,84 +92,85 @@
     (is (= 200 (:status (dispatch c1 {:uri "/hello/anything/b" :request-method :get}))))))
 
 (deftest test-dispatch-assoc
-  (is (dassoc nil "/" :get okhandler))
+  (is (dassoc nil "/" okhandler))
   (is (= 200 (:status (dispatch
-                       (dassoc nil "/" :get okhandler)
+                       (dassoc nil "/" okhandler)
                        {:uri "/"
                         :request-method :get}))))
   (is (= 200 (:status (dispatch
-                       (dassoc nil "/" :get okhandler)
+                       (dassoc nil "/" okhandler)
                        {:uri "/"
                         :request-method :options}))))
   (is (= 404 (:status (dispatch
-                       (dassoc nil "/hello" :get okhandler)
+                       (dassoc nil "/hello" okhandler)
                        {:uri "/"
                         :request-method :get}))))
   (is (= 200 (:status (dispatch
-                       (dassoc nil "/hello" :get okhandler)
+                       (dassoc nil "/hello" okhandler)
                        {:uri "/hello"
                         :request-method :get}))))
   (is (= 200 (:status (dispatch
-                       (dassoc nil "/hello" :get okhandler)
+                       (dassoc nil "/hello" okhandler)
                        {:uri "/hello"
                         :request-method :get}))))
   (is (= 404 (:status (dispatch
-                       (dassoc nil "/hello/there" :get okhandler)
+                       (dassoc nil "/hello/there" okhandler)
                        {:uri "/hello"
                         :request-method :get}))))
   (is (= 200 (:status (dispatch
-                       (dassoc nil "/hello/there" :get okhandler)
+                       (dassoc nil "/hello/there" okhandler)
                        {:uri "/hello/there"
                         :request-method :get}))))
   (is (= 404 (:status (dispatch
-                       (dassoc nil "/hello" :get okhandler)
+                       (dassoc nil "/hello" okhandler)
                        {:uri "/hello/there"
                         :request-method :get}))))
   (is (= 200 (:status (dispatch
-                       (dassoc nil "/hello/:there" :get okhandler)
+                       (dassoc nil "/hello/:there" okhandler)
                        {:uri "/hello/there"
                         :request-method :get}))))
   (is (thrown? Exception
                (-> nil
-                   (dassoc "/hello/:there" :get okhandler)
-                   (dassoc "/hello/:abcd" :get okhandler))))
+                   (dassoc "/hello/:there" okhandler)
+                   (dassoc "/hello/:abcd" okhandler))))
   (is (thrown? Exception
                (-> nil
-                   (dassoc "/hello/:there" :post okhandler)
-                   (dassoc "/hello/:abcd" :get okhandler))))
+                   (dassoc "/hello/:there" okhandler)
+                   (dassoc "/hello/:abcd" okhandler))))
 
-  (is (-> nil
-          (dassoc "/hello/:there" :post okhandler)
-          (dassoc "/hello/:there" :get  okhandler)))
+  (is (thrown? Exception
+               (-> nil
+                   (dassoc "/hello/:there" okhandler)
+                   (dassoc "/hello/:there"  okhandler))))
 
   (let [resp (dispatch (-> nil
-                           (dassoc "/hello/:there/a" :get (fn [req] {:status 200 :headers {} :there (:there req)}))
-                           (dassoc "/hello/:abcd/b" :get (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
+                           (dassoc "/hello/:there/a" (fn [req] {:status 200 :headers {} :there (:there req)}))
+                           (dassoc "/hello/:abcd/b" (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
                        {:uri "/hello/there/a"
                         :request-method :get})]
     (is (= 200 (:status resp)))
     (is (= "there" (:there resp))))
 
   (let [resp (dispatch (-> nil
-                           (dassoc "/hello/:abcd/b" :get (fn [req] {:status 200 :headers {} :abcd (:abcd req)}))
-                           (dassoc "/hello/:there/a" :get (fn [req] {:status 200 :headers {} :there (:there req)})))
+                           (dassoc "/hello/:abcd/b" (fn [req] {:status 200 :headers {} :abcd (:abcd req)}))
+                           (dassoc "/hello/:there/a" (fn [req] {:status 200 :headers {} :there (:there req)})))
                        {:uri "/hello/there/a"
                         :request-method :get})]
     (is (= 200 (:status resp)))
     (is (= "there" (:there resp))))
 
   (let [resp (dispatch (-> nil
-                           (dassoc "/hello/:there/a/2" :get (fn [req] {:status 200 :headers {} :there (:there
+                           (dassoc "/hello/:there/a/2" (fn [req] {:status 200 :headers {} :there (:there
                                                                                                       req)}))
-                           (dassoc "/hello/:abcd/b/2" :get (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
+                           (dassoc "/hello/:abcd/b/2" (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
                        {:uri "/hello/there/a/2"
                         :request-method :get})]
     (is (= 200 (:status resp)))
     (is (= "there" (:there resp))))
 
   (let [resp (dispatch (-> nil
-                           (dassoc "/hello/:there/a/b/2" :get (fn [req] {:status 200 :headers {} :there (:there req)}))
-                           (dassoc "/hello/:abcd/a/c/2" :get (fn [req]
+                           (dassoc "/hello/:there/a/b/2" (fn [req] {:status 200 :headers {} :there (:there req)}))
+                           (dassoc "/hello/:abcd/a/c/2" (fn [req]
                                                                {:status 200 :headers {} :abcd (:abcd req)})))
                        {:uri "/hello/there/a/b/2"
                         :request-method :get})]
@@ -206,8 +178,8 @@
     (is (= "there" (:there resp))))
 
   (let [resp (dispatch (-> nil
-                           (dassoc "/hello/:there/:a/b/2" :get (fn [req] {:status 200 :headers {} :there (:there req)}))
-                           (dassoc "/hello/:abcd/:a/c/2" :get (fn [req]
+                           (dassoc "/hello/:there/:a/b/2" (fn [req] {:status 200 :headers {} :there (:there req)}))
+                           (dassoc "/hello/:abcd/:a/c/2" (fn [req]
                                                                 {:status 200 :headers {} :abcd (:abcd req)})))
                        {:uri "/hello/there/a/b/2"
                         :request-method :get})]
@@ -215,32 +187,32 @@
     (is (= "there" (:there resp))))
 
   (let [resp (dispatch (-> nil
-                           (dassoc "/hello/:there/:a/b/2" :get (fn [req] {:status 200 :headers {} :there (:there req)}))
-                           (dassoc "/hello/:abcd/:a/c/2" :get (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
+                           (dassoc "/hello/:there/:a/b/2" (fn [req] {:status 200 :headers {} :there (:there req)}))
+                           (dassoc "/hello/:abcd/:a/c/2" (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
                        {:uri "/hello/there/a/c/2"
                         :request-method :get})]
     (is (= 200 (:status resp)))
     (is (= "there" (:abcd resp))))
 
   (let [resp (dispatch (-> nil
-                           (dassoc "/hello/:there/a/:b/2" :get (fn [req] {:status 200 :headers {} :there (:there req)}))
-                           (dassoc "/hello/:abcd/:a/c/2" :get (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
+                           (dassoc "/hello/:there/a/:b/2" (fn [req] {:status 200 :headers {} :there (:there req)}))
+                           (dassoc "/hello/:abcd/:a/c/2" (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
                        {:uri "/hello/there/a/c/2"
                         :request-method :get})]
     (is (= 200 (:status resp)))
     (is (= "there" (:there resp))))
 
   (let [resp (dispatch (-> nil
-                           (dassoc "/hello/:there/a/c/:2" :get (fn [req] {:status 200 :headers {} :there (:there req)}))
-                           (dassoc "/hello/:abcd/:a/c/2" :get (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
+                           (dassoc "/hello/:there/a/c/:2" (fn [req] {:status 200 :headers {} :there (:there req)}))
+                           (dassoc "/hello/:abcd/:a/c/2" (fn [req] {:status 200 :headers {} :abcd (:abcd req)})))
                        {:uri "/hello/there/a/c/2"
                         :request-method :get})]
     (is (= 200 (:status resp)))
     (is (= "there" (:there resp))))
 
   (let [resp (dispatch (-> nil
-                           (dassoc "/hello/:abcd/:a/c/2" :get (fn [req] {:status 200 :headers {} :abcd (:abcd req)}))
-                           (dassoc "/hello/:there/a/c/:2" :get (fn [req] {:status 200 :headers {} :there (:there req)})))
+                           (dassoc "/hello/:abcd/:a/c/2" (fn [req] {:status 200 :headers {} :abcd (:abcd req)}))
+                           (dassoc "/hello/:there/a/c/:2" (fn [req] {:status 200 :headers {} :there (:there req)})))
                        {:uri "/hello/there/a/c/2"
                         :request-method :get})]
     (is (= 200 (:status resp)))
@@ -248,15 +220,16 @@
 
   (is (thrown? Exception
                (-> nil
-                   (dassoc "/hello/:abcd/a/c/:0" :get (fn [req] {:status 200 :headers {} :abcd (:abcd req)}))
-                   (dassoc "/hello/:there/a/c/:2" :get (fn [req] {:status 200 :headers {} :there (:there req)})))))
+                   (dassoc "/hello/:abcd/a/c/:0" (fn [req] {:status 200 :headers {} :abcd (:abcd req)}))
+                   (dassoc "/hello/:there/a/c/:2" (fn [req] {:status 200 :headers {} :there (:there req)})))))
 
   (is (thrown? Exception
                (-> nil
-                   (dassoc "/hello" :get (fn [req] {:status 200 :headers {}}))
-                   (dassoc "/hello" :get (fn [req] {:status 200 :headers {}})))))
+                   (dassoc "/hello" (fn [req] {:status 200 :headers {}}))
+                   (dassoc "/hello" (fn [req] {:status 200 :headers {}})))))
 
-  (is (-> nil
-          (dassoc "/hello" :get (fn [req] {:status 200 :headers {}}))
-          (dassoc "/hello" :post (fn [req] {:status 200 :headers {}}))))
+  (is (thrown? Exception
+               (-> nil
+                   (dassoc "/hello" (fn [req] {:status 200 :headers {}}))
+                   (dassoc "/hello" (fn [req] {:status 200 :headers {}})))))
   )

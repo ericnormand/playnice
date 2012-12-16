@@ -1,4 +1,4 @@
-(def feature-version "0.0.5")
+(def feature-version "0.0.6")
 (def build-version (or (System/getenv "BUILD_NUMBER") "HANDBUILT"))
 (def release-version (str feature-version "." build-version))
 (def project-name "playnice")

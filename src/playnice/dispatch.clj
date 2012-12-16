@@ -18,5 +18,5 @@
   (let [p (split-path (:uri req))]
     (protocol/dispatch dsp (assoc req :path-segments p :remaining-path-segments p))))
 
-(defn dassoc [dsp path method handler]
-  (protocol/dassoc dsp (split-path-kws path) method handler))
+(defn dassoc [dsp path handler]
+  (protocol/dassoc dsp (split-path-kws path) handler))
