@@ -3,7 +3,7 @@
 (def release-version (str feature-version "." build-version))
 (def project-name "playnice")
 
-(defproject playnice feature-version
+(defproject playnice release-version
   :uberjar-name ~(str project-name "-" release-version ".jar")
   :jar-name ~(str project-name "-" release-version ".jar")
   :manifest {"Implementation-Version" ~release-version}
