@@ -12,37 +12,36 @@
 (defrecord PathSegmentDispatch      [variables])
 (defrecord MethodDispatch           [])
 
-(extend-type nil
+(def http-methods #{:options :get :head :post :put :delete :trace :connect :patch})
+
+(extend-type MethodDispatch
   Dispatch
-  (dispatch [_ _]
-    {:status 404
-     :body "Not found."
-     :dispatch true
-     :headers {}
-     :failed :nil})
-  (dassoc [dsp path method handler]
-    (dassoc (PathLengthDispatch.) path method handler)))
+  (dispatch [dp req]
+    (let [method (:request-method req)
+          sub (get dp method)]
+      (if sub
+        (dispatch sub req)
+        (let [methods (conj (set/intersection (set (keys dp)) http-methods) :options)
+              methods (string/join ", " (map #(string/upper-case (name %)) methods))
+              hdrs {"Allow" methods}]
+          (if (= :options method)
+            {:status 200
+             :headers hdrs
+             :body ""}
+            
+            {:status 405
+             :headers hdrs
+             :body (str "Method not allowed (" (string/upper-case (name method)) ")")})))))
+  (dassoc [dp ps method handler]
+    (if (get dp method)
+     (throw (ex-info "In method dispatch: Refusing to overwrite handler."
+                     {:path ps :method method}))
+     (assoc dp method handler))))
 
 (extend-type clojure.lang.Fn
   Dispatch
   (dispatch [hndlr req]
     (hndlr req)))
-
-(extend-type PathLengthDispatch
-  Dispatch
-  (dispatch [dsp req]
-    (if-let [sub (get dsp (count (:remaining-path-segments req)))]
-      (dispatch sub req)
-      {:status 404
-       :body "Not found."
-       :dispatch true
-       :headers {}
-       :failed :path-length
-       }))
-  (dassoc [dsp ps method handler]
-    (let [ln (count ps)
-          default (if (zero? ln) (MethodDispatch.) (PathSegmentDispatch. nil))]
-      (update-in dsp [ln] #(dassoc (or % default) ps method handler)))))
 
 (extend-type PathVariableDispatch
   Dispatch
@@ -128,28 +127,30 @@
        :otherwise
        (dassoc (MethodDispatch.) ps method handler)))))
 
-(def http-methods #{:options :get :head :post :put :delete :trace :connect :patch})
 
-(extend-type MethodDispatch
+(extend-type PathLengthDispatch
   Dispatch
-  (dispatch [dp req]
-    (let [method (:request-method req)
-          sub (get dp method)]
-      (if sub
-        (dispatch sub req)
-        (let [methods (conj (set/intersection (set (keys dp)) http-methods) :options)
-              methods (string/join ", " (map #(string/upper-case (name %)) methods))
-              hdrs {"Allow" methods}]
-          (if (= :options method)
-            {:status 200
-             :headers hdrs
-             :body ""}
-            
-            {:status 405
-             :headers hdrs
-             :body (str "Method not allowed (" (string/upper-case (name method)) ")")})))))
-  (dassoc [dp ps method handler]
-    (if (get dp method)
-     (throw (ex-info "In method dispatch: Refusing to overwrite handler."
-                     {:path ps :method method}))
-     (assoc dp method handler))))
+  (dispatch [dsp req]
+    (if-let [sub (get dsp (count (:remaining-path-segments req)))]
+      (dispatch sub req)
+      {:status 404
+       :body "Not found."
+       :dispatch true
+       :headers {}
+       :failed :path-length
+       }))
+  (dassoc [dsp ps method handler]
+    (let [ln (count ps)
+          default (if (zero? ln) (MethodDispatch.) (PathSegmentDispatch. nil))]
+      (update-in dsp [ln] #(dassoc (or % default) ps method handler)))))
+
+(extend-type nil
+  Dispatch
+  (dispatch [_ _]
+    {:status 404
+     :body "Not found."
+     :dispatch true
+     :headers {}
+     :failed :nil})
+  (dassoc [dsp path method handler]
+    (dassoc (PathLengthDispatch.) path method handler)))
