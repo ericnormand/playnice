@@ -3,8 +3,11 @@
 (def release-version (str feature-version "." build-version))
 (def project-name "playnice")
 
-
-(defproject project-name feature-version
+(defproject playnice feature-version
+  :uberjar-name ~(str project-name "-" release-version ".jar")
+  :jar-name ~(str project-name "-" release-version ".jar")
+  :manifest {"Implementation-Version" ~release-version}
+  
   :description "A library to help you serve HTTP standard responses and be lenient with HTTP requests."
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [ring/ring-jetty-adapter "1.1.0-beta2"]
