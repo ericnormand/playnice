@@ -146,17 +146,15 @@ it can be quite inconvenient when headers cannot be set or if setting
 them is a chore. For instance, how can you set headers in the `href`
 of a link?
 
-This middleware solves the problem by looking at the file name
-extension of the URL. Let's say there is a resource at `/user/1138`
-that returns information about a user. Normally, it will use HTTP Content
-negotiation to determine what content-type to use. For this example,
-we assume we can return results in JSON, HTML, and XML. Because of the
-standard `Accept` header of most browsers, HTML will always be
-preferred.
+Let's say there is a resource at `/user/1138` that returns information
+about a user. Normally, it will use HTTP content negotiation to
+determine what content-type to use. For this example, we assume we can
+return results in JSON, HTML, and XML. Because of the standard
+`Accept` header of most browsers, HTML will always be preferred.
 
 But in this case, we don't want HTML, we want JSON. We could alter the
 `Accept` header. But we can't do that in a link. Or we could add a new
-route just for JSON (`/user/1138/json`). But that is not scalable (3
+route just for JSON (`/user/1138/json`), but that is not scalable (3
 handlers per resource?) and does not take full advantage of our
 content negotiation machinery. What `wrap-fake-accept` does is to fake
 an `Accept` header using the filename extension of the path.
@@ -189,21 +187,22 @@ becomes
 Many servers put a forwarding proxy in front of them. These servers
 add security, load balancing, and performance features. However, they
 often transform the requests. On our development machines, we often
-will hit the server directly. This middleware un-transforms a
-particular part of the request, namely, it restores the `:remote-addr`
-portion of the Ring request to the value of the `X-Forwarded-For`
-header, if it exists. This way, we ensure that the behavior is the
-same regardless of whether it is deployed or running on our local
-machine.
+will hit the server directly. So the requests look different on dev
+machines and production. This middleware un-transforms a particular
+part of the request, namely, it restores the `:remote-addr` portion of
+the Ring request to the value of the `X-Forwarded-For` header, if it
+exists. This way, we ensure that the behavior is the same regardless
+of whether it is deployed or running on our local machine.
 
 ## Use it!
 
 Please use it and send your patches. I'd love to hear your feedback.
-Just create an issue in github.
-https://github.com/ericnormand/playnice
+Just create an issue in [Github].
+
+[Github]: https://github.com/ericnormand/playnice
 
 ## License
 
-Copyright (C) 2012 FIXME
+Copyright (C) 2013 Eric Normand
 
 Distributed under the Eclipse Public License, the same as Clojure.
