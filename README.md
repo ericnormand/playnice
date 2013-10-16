@@ -82,7 +82,9 @@ Compojure in the following ways:
 
   playnice routes are stored in a Clojure map and are built using
   functions. This means that a routing tree is first-class. This is
-  especially helpful when aggregating routes from different files.
+  especially helpful when aggregating routes from different files. The
+  order of file includes is hard to predict and can change easily, so
+  order independence is very important.
 
 Using the router is quite easy. There are two functions to know:
 `dassoc` and `dispatch` in the `playnice.core` namespace.
@@ -91,30 +93,32 @@ Using the router is quite easy. There are two functions to know:
 handler. It returns a new routing tree.
 
 The path pattern is quite simple. The path pattern is a string that is
-broken down into path segments. If the path segment starts with a ":",
+broken down into path segments. If the path segment starts with a `:`,
 then it is considered a variable segment. Otherwise, it is an
 exact-match segment.
 
 Examples:
 
-  "/" -> Will match only the root
-  "/some/path/to/something" -> All segments much match exactly
-  "/user/:userid" -> Will match all paths of two segments that start with "/user/"
+    "/" ;;-> Will match only the root  
+    "/some/path/to/something" ;;-> All segments much match exactly  
+    "/user/:userid" ;;-> Will match all paths of two segments that start with "/user/"
 
 Exact-match segments are self-explanatory. Variable segments always
 succed when the segment exists. They also store the entire segment
 that is matched in the request. For instance:
 
- "/purchase/:purchaseid" matched on "/purchase/123" will assoc
+ "/purchase/:purchaseid" matched on "/purchase/123" will `assoc`
  `:purchaseid "123"` in the Ring request object passed to the
  handler. You can then access it as `(:purchaseid req)`
 
 The other function you need to know is called `dispatch`. It takes a
 routing tree and a Ring request and returns a Ring
 response. `dispatch` performs the routing logic required to choose a
-handler and either runs the handler or returns a generic 404 response.
+handler and either runs the handler or returns a generic 404
+response. Thus concludes the routing section.
 
-### `wrap-fake-methods`
+### Middleware
+#### `wrap-fake-methods`
 
 Forms submitted in browsers can only perform GET and POST
 requests. This is unfortunate since sometimes the operation that form
@@ -134,7 +138,7 @@ Reminder: this middleware depends on parameters from the query string
 and/or the form post body. This middleware should be wrapped by the
 middleware which parses those parameters.
 
-### `wrap-fake-accept`
+#### `wrap-fake-accept`
 
 The HTTP standard defines the `Accept` header to notify the server
 what mime-types it can handle in the response. This is great. However,
@@ -180,16 +184,17 @@ becomes
                ...}
      ...}
 
-### `wrap-ip-forwarding`
+#### `wrap-ip-forwarding`
 
 Many servers put a forwarding proxy in front of them. These servers
 add security, load balancing, and performance features. However, they
 often transform the requests. On our development machines, we often
 will hit the server directly. This middleware un-transforms a
 particular part of the request, namely, it restores the `:remote-addr`
-portion of the Ring request to the value of the `X-Forwarded-For`, if
-it exists. This way, we ensure that the behavior is the same
-regardless of whether it is deployed or running on our local machine.
+portion of the Ring request to the value of the `X-Forwarded-For`
+header, if it exists. This way, we ensure that the behavior is the
+same regardless of whether it is deployed or running on our local
+machine.
 
 ## Use it!
 
