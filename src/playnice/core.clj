@@ -1,4 +1,4 @@
-(ns playmice.core
+(ns playnice.core
   (:require [clojure.string :as string]
             [pantomime.mime :refer [mime-type-of]]
             [playnice.dispatch :as dispatch]))
