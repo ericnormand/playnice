@@ -1,5 +1,5 @@
 (ns playnice.test.dispatch
-  (:use playnice.dispatch)
+  (:use playnice.core)
   (:use clojure.test))
 
 (deftest handler-dispatch
@@ -12,7 +12,7 @@
 
 (defn pld [& rest]
   (if (empty? rest)
-    (playnice.dispatch.protocol/pathlength)
+    (playnice.dispatch/pathlength)
     (apply assoc (pld) rest)))
 
 (deftest path-length-dispatch
@@ -26,7 +26,7 @@
 (deftest nil-dispatch
   (is (= 404 (:status (dispatch nil {:uri "/anything"})))))
 
-(defn pvd [v s c p] (playnice.dispatch.protocol/pathvariable v s c p))
+(defn pvd [v s c p] (playnice.dispatch/pathvariable v s c p))
 
 (deftest path-variable-dispatch
   (is (= 200 (:status (dispatch (pvd :greeting okhandler 0 nil) {:uri "/hello"}))))
@@ -34,11 +34,11 @@
 
 (defn psd [& rest]
   (if (empty? rest)
-    (playnice.dispatch.protocol/pathsegment nil)
+    (playnice.dispatch/pathsegment nil)
     (apply assoc (psd) rest)))
 
 (defn pvld [vars]
-  (playnice.dispatch.protocol/pathvariablelist vars))
+  (playnice.dispatch/pathvariablelist vars))
 
 (deftest path-segment-dispatch
   (is (= 404 (:status (dispatch (psd) {:uri "/dude/farout"}))))
