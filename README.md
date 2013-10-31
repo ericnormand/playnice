@@ -7,7 +7,7 @@ creating HTTP-compliant web servers.
 
 Add this to your dependencies:
 
-    [playnice "1.0.0"]
+    [playnice "1.0.1"]
 
 Then you can define a simple server like this.
 
