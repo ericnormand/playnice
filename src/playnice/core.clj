@@ -11,8 +11,9 @@
   parameters are parsed using ring.middleware/wrap-params or similar."
   [hdlr]
   (fn [req]
-    (if-let [request-method (or (get-in req [:params :__method])
-                                (get-in req [:params "__method"]))]
+    (if-let [request-method (and (= :post (:request-method req))
+                                 (or (get-in req [:params :__method])
+                                     (get-in req [:params "__method"])))]
       (hdlr (assoc req :request-method (keyword (string/lower-case request-method))))
       (hdlr req))))
 
